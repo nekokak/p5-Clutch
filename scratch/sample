@@ -1,0 +1,53 @@
+package Your::Worker::Foo;
+use strict;
+use warnings;
+use Clutch::Worker;
+
+register_function(
+    'get_server_list' => sub {
+        my $args = shift;
+        # some process;
+        [qw/host1 host2 host3/];
+    }
+);
+
+register_function(
+    'get_server' => sub {
+        my $args = shift;
+        # some process;
+        +{os => 'debian'};
+    }
+);
+
+1;
+
+package main;
+use strict;
+use warnings;
+use Your::Worker::Foo;
+
+Your::Worker::Foo->new(
+    address      => 'localhost:5963',
+    admin_adress => 'localhost:1919',
+)->run();
+
+use Clutch::Client;
+
+my $client = Clutch::Client->new(
+    servers => [
+        { address => 'localhost:5963',    weight => 2.5 },
+        { address => '192.168.0.11:5963', weight => 2.5 },
+        '192.168.0.10:5963',
+    ],
+);
+my $res = $client->request('get_server', +{hostname => host1});
+$res->{os}; # debian
+
+# admin
+
+my $client = Clutch::Client->new(
+    admin_host => 'localhost',
+    admin_port => 1919,
+);
+
+
