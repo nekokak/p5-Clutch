@@ -26,9 +26,13 @@ use inc::Module::Install;
 
 all_from 'lib/Clutch.pm';
 
+requires 'Data::WeightedRoundRobin' => '0.02';
+requires 'Parallel::Prefork'        => '0.13';
 
 test_requires 'Test::More'     => '0.88';
 test_requires 'Test::Requires' => '0.06';
+
+install_script 'bin/clutch-admin.pl';
 
 auto_set_repository;
 

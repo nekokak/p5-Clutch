@@ -93,3 +93,72 @@ sub request {
 
 1;
 
+__END__
+
+=head1 NAME
+
+Clutch::Client - distributed job system's client class
+
+=head1 SYNOPSIS
+
+    # client script
+    use strict;
+    use warnings;
+    use Clutch::Client;
+    my $args = shift || die 'missing args';
+    my $client = Clutch::Client->new(
+        servers => [
+            +{ address => "$worker_ip:$worker_port" },
+        ],
+    );
+    my $res = $client->request('echo', $args);
+    print $res, "\n";
+
+=head1 METHOD
+
+=head2 my $client = Clutch::Client->new(%opts);
+
+=over
+
+=item $opts{servers}
+
+The value is a reference to an array of worker addresses.
+
+If hash reference, the keys are address (scalar), weight (positive rational number)
+
+The server address is in the form host:port for network TCP connections
+
+Client will distribute Data::WeightedRoundRobin.
+
+=item $opts{admin_address}
+
+inquiry workers address from admin daemon, if admin daemon starting.
+
+=item $opts{timeout}
+
+seconds until timeout (default: 10)
+
+=back
+
+=head2 my $res = $client->request($function_name, $args);
+
+=over
+
+=item $function_name
+
+worker process function name.
+
+=item $args
+
+get over client argument for worker process.
+
+$args must be single line data.
+
+=back
+
+=head1 SEE ALSO
+
+L<Data::WeightedRoundRobin>
+
+=cut
+

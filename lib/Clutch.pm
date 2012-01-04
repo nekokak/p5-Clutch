@@ -5,7 +5,6 @@ use warnings;
 
 our $VERSION = '0.01';
 
-
 1;
 __END__
 
@@ -19,23 +18,55 @@ This document describes Clutch version 0.01.
 
 =head1 SYNOPSIS
 
-    use Clutch;
+    # worker
+    package Your::Worker;
+    use strict;
+    use warnings;
+    use Clutch::Worker;
+    
+    register_function(
+        'echo' => sub {
+            my $args = shift;
+            $$ .':'. $args; # return worker process response.
+        }
+    );
+    1;
+
+    # worker start script by single process
+    #! perl
+    use strict;
+    use warnings;
+    use Your::Worker;
+    Your::Worker->new(
+        {
+            address => "$ip:$port",
+        }
+    )->run(); # stop by TERM signal to this process
+
+    # client script
+    use strict;
+    use warnings;
+    use Clutch::Client;
+    my $args = shift || die 'missing args';
+    my $client = Clutch::Client->new(
+        servers => [
+            +{ address => "$worker_ip:$worker_port" },
+        ],
+    );
+    my $res = $client->request('echo', $args);
+    print $res, "\n";
 
 =head1 DESCRIPTION
 
-# TODO
+Clutch is distributed job system. like L<Gearman>.
 
-=head1 INTERFACE
+but Clutch B<no needed exclusive use daemon process>.
 
-=head2 Functions
-
-=head3 C<< hello() >>
-
-# TODO
+the worker process itself receives a request. 
 
 =head1 DEPENDENCIES
 
-Perl 5.8.1 or later.
+L<Parallel::Prefork>
 
 =head1 BUGS
 
@@ -45,7 +76,13 @@ to cpan-RT.
 
 =head1 SEE ALSO
 
-L<perl>
+L<Clutch::Client>
+
+L<Clutch::Worker>
+
+=head1 THANKS
+
+many code stolen from Starlet. kazuhooku++
 
 =head1 AUTHOR
 
@@ -53,9 +90,10 @@ Atsushi Kobayashi E<lt>nekokak@gmail.comE<gt>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright (c) 2011, Atsushi Kobayashi. All rights reserved.
+Copyright (c) 2012, Atsushi Kobayashi. All rights reserved.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
+

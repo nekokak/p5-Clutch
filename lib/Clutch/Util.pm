@@ -17,7 +17,7 @@ sub new_client {
     my $sock = IO::Socket::INET->new(
         PeerAddr => $address,
         Proto    => 'tcp',
-    ) or die "Cannot open cient socket: $!";
+    ) or die "Cannot open client socket: $!";
 
     setsockopt($sock, IPPROTO_TCP, TCP_NODELAY, pack("l", 1)) or die;
     $sock->autoflush(1);

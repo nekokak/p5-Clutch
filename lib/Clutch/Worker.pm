@@ -183,4 +183,108 @@ sub register_function ($$) {
 }
  
 1;
- 
+__END__
+
+=head1 NAME
+
+Clutch::Worker - distributed job system's worker class
+
+=head1 SYNOPSIS
+
+    # worker
+    package Your::Worker;
+    use strict;
+    use warnings;
+    use Clutch::Worker;
+    
+    register_function(
+        'echo' => sub {
+            my $args = shift;
+            $$ .':'. $args; # return worker process response.
+        }
+    );
+    1;
+
+    # worker start script by single process
+    #! perl
+    use strict;
+    use warnings;
+    use Your::Worker;
+    Your::Worker->new(
+        {
+            address => "$ip:$port",
+        }
+    )->run(); # stop by TERM signal to this process
+
+    # worker start script by multi prefork process
+    #! perl
+    use strict;
+    use warnings;
+    use Your::Worker;
+    Your::Worker->new(
+        {
+            address            => "$ip:$port",
+            max_workers        => $worker_num,
+            max_reqs_per_child => $max_reqs_per_child,
+        }
+    )->new();
+
+=head1 EXPORT WORKER FUNCTION
+
+=head2 register_function($function_name, $callback_coderef);
+
+=over
+
+=item $function_name
+
+worker process function name.
+
+client process specific this functin name.
+
+=item $callback_coderef
+
+client process call the function, execute thid $callback_coderef.
+
+$callback_coderef's first argument is a client request parameter.
+
+=back
+
+=head1 USAGE
+
+=head2 my $worker = Your::Worker->new(\%opts);
+
+=over
+
+=item $opts{address}
+
+worker process listen address.
+
+=item $opts{admin_address}
+
+worker process can tells itself address for admin daemon, if admin daemon starting.
+
+=item $opts{timeout}
+
+seconds until timeout (default: 10)
+
+=item $opts{max_workers}
+
+number of worker processes (default: 0)
+
+if max_workers is 0, worker start single process mode.
+
+if you specific max_workers Zero or more, do prefork worker process.
+
+=item $opts{spawn_interval}
+
+if set, worker processes will not be spawned more than once than every given seconds.
+ Also, when SIGHUP is being received, no more than one worker processes will be collected every given seconds.
+ This feature is useful for doing a "slow-restart".
+ See http://blog.kazuhooku.com/2011/04/web-serverstarter-parallelprefork.html for more information. (dedault: none)
+
+=item $opts{max_reqs_per_child}
+
+max. number of requests to be handled before a worker process exits (default: 100)
+
+=cut
+
