@@ -4,8 +4,8 @@ use warnings;
 use parent qw(Exporter);
 use IO::Socket::INET;
 use Socket qw(IPPROTO_TCP TCP_NODELAY);
-use Carp ();
 use Clutch::Util;
+use Parallel::Prefork;
 
 our @EXPORT = qw(
     new
@@ -25,10 +25,14 @@ sub new {
     my %args = @_ == 1 ? %{$_[0]} : @_;
 
     %args = (
-        address       => undef,
-        admin_address => undef,
-        functions     => $FUNCTIONS,
-        timeout       => 10,
+        address              => undef,
+        admin_address        => undef,
+        functions            => $FUNCTIONS,
+        timeout              => 10,
+        max_workers          => 0,
+        spawn_interval       => 0,
+        err_respawn_interval => undef,
+        max_reqs_per_child   => 100,
         %args,
     );
 
@@ -37,7 +41,6 @@ sub new {
     if ($self->{admin_address}) {
         $self->register_admin();
     }
-
     $self;
 }
 
@@ -61,15 +64,48 @@ sub setup_listener {
 sub run {
     my $self = shift;
     $self->setup_listener();
-    $self->accept_loop();
+
+    if ($self->{max_workers} != 0) {                                                                                                                                                                                                          
+        my %pm_args = (                                                                                                                                                                                                                       
+            max_workers => $self->{max_workers},                                                                                                                                                                                              
+            trap_signals => {                                                                                                                                                                                                                 
+                TERM => 'TERM',                                                                                                                                                                                                               
+                HUP  => 'TERM',                                                                                                                                                                                                               
+            },                                                                                                                                                                                                                                
+        );
+        if (defined $self->{spawn_interval}) {
+            $pm_args{trap_signals}{USR1} = [ 'TERM', $self->{spawn_interval} ];
+            $pm_args{spawn_interval} = $self->{spawn_interval};
+        }
+        if (defined $self->{err_respawn_interval}) {
+            $pm_args{err_respawn_interval} = $self->{err_respawn_interval};
+        }
+        my $pm = Parallel::Prefork->new(\%pm_args);
+        while ($pm->signal_received !~ /^(TERM|USR1)$/) {
+            $pm->start and next;
+            $self->accept_loop;
+            $pm->finish;
+        }
+        $pm->wait_all_children;
+    } else {
+        # run directly
+        local $SIG{TERM} = sub { exit 0; };
+        while (1) {
+            $self->accept_loop;
+        }
+    }
 }
 
 sub accept_loop {
     my $self = shift;
 
-    while (1) {
+    my $proc_req_count = 0;
+
+    while (! defined $self->{max_reqs_per_child} || $proc_req_count < $self->{max_reqs_per_child}) {
         local $SIG{PIPE} = 'IGNORE';
         if (my $conn = $self->{listen_sock}->accept) {
+            ++$proc_req_count;
+
             $self->{_is_deferred_accept} = $self->{_using_defer_accept};
 
             $conn->blocking(0)
@@ -77,9 +113,8 @@ sub accept_loop {
             $conn->setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
                 or die "setsockopt(TCP_NODELAY) failed:$!";
 
-            while (1) {
-                $self->handle_connection($conn) or last;
-            }
+            $self->handle_connection($conn);
+
             $conn->close;
         }
     }
@@ -89,23 +124,21 @@ sub handle_connection {
     my ($self, $conn) = @_;
 
     my $buf = '';
-    my $res;
+    my $req = +{};
 
     while (1) {
         my $rlen = Clutch::Util::read_timeout(
             $conn, \$buf, $MAX_REQUEST_SIZE - length($buf), length($buf), $self->{timeout}, $self
         ) or return;
 
-        my $req = +{};
-        my $rv = Clutch::Util::parse_read_buffer($buf, $req);
-        if ($rv) {
-            # handle request
-            $res = $self->dispatch($req);
-            last;
-        }
+        Clutch::Util::parse_read_buffer($buf, $req)
+            and last;
     }
 
+    my $res = $self->dispatch($req);
+
     Clutch::Util::write_all($conn, $res . $CRLF x 2, $self->{timeout}, $self);
+
     return;
 }
 
@@ -140,7 +173,7 @@ sub register_admin {
     $sock->close();
 
     unless ($buf eq 'OK') {
-        Carp::croak("can't set worker address for admin server");
+        die "can't set worker address for admin server";
     }
 }
  
