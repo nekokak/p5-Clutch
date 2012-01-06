@@ -31,6 +31,7 @@ requires 'Parallel::Prefork'        => '0.13';
 
 test_requires 'Test::More'     => '0.88';
 test_requires 'Test::Requires' => '0.06';
+test_requires 'Test::TCP'      => '1.14';
 
 install_script 'bin/clutch-admin.pl';
 
