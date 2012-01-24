@@ -1,4 +1,5 @@
-package Worker;
+package # hide from PAUSE
+  Worker;
 use strict;
 use warnings;
 use Clutch::Worker;
