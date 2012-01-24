@@ -2,13 +2,6 @@
 .shipit
 bin/clutch-admin.pl
 Changes
-eg/client-use-admin.pl
-eg/client.pl
-eg/lib/Worker.pm
-eg/loop-client.pl
-eg/prefork-worker.pl
-eg/worker-use-admin.pl
-eg/worker.pl
 inc/Module/Install.pm
 inc/Module/Install/AuthorTests.pm
 inc/Module/Install/Base.pm
@@ -27,13 +20,6 @@ MANIFEST			This list of files
 MANIFEST.SKIP
 META.yml
 README
-scratch/admin.pl
-scratch/admin_client.pl
-scratch/admin_worker.pl
-scratch/lib/Worker.pm
-scratch/sample
-scratch/simple_client.pl
-scratch/simple_worker.pl
 t/000_load.t
 t/001_basic.t
 t/lib/Worker.pm
