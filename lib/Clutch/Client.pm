@@ -40,7 +40,8 @@ sub _get_worker_list {
 
     my $sock = Clutch::Util::new_client($self->{admin_address});
 
-    my $msg = 'get_servers' . $CRLF x 2;
+    my $cmd = Clutch::Util::cmd_to_no('request');
+    my $msg = join($SPACE, $cmd, 'get_servers') . $CRLF;
     Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
 
     my $buf='';
@@ -73,7 +74,8 @@ sub request {
     my $server = $self->{dwr}->next;
     my $sock = Clutch::Util::new_client($server);
 
-    my $msg = join($CRLF, $function, $args) . $CRLF x 2;
+    my $cmd = Clutch::Util::cmd_to_no('request');
+    my $msg = join($SPACE, $cmd, $function, $args) . $CRLF;
     Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
 
     my $buf='';
@@ -88,7 +90,7 @@ sub request {
         }
     }
     $sock->close();
-    return $buf eq "\0" ? undef : $buf;
+    return $buf eq $NULL ? undef : $buf;
 }
 
 1;

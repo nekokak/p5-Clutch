@@ -13,7 +13,7 @@ our @EXPORT = qw(
     setup_listener
     accept_loop
     handle_connection
-    dispatch
+    do_request
     register_admin
     register_function
 );
@@ -65,13 +65,13 @@ sub run {
     my $self = shift;
     $self->setup_listener();
 
-    if ($self->{max_workers} != 0) {                                                                                                                                                                                                          
-        my %pm_args = (                                                                                                                                                                                                                       
-            max_workers => $self->{max_workers},                                                                                                                                                                                              
-            trap_signals => {                                                                                                                                                                                                                 
-                TERM => 'TERM',                                                                                                                                                                                                               
-                HUP  => 'TERM',                                                                                                                                                                                                               
-            },                                                                                                                                                                                                                                
+    if ($self->{max_workers} != 0) {
+        my %pm_args = (
+            max_workers => $self->{max_workers},
+            trap_signals => {
+                TERM => 'TERM',
+                HUP  => 'TERM',
+            },
         );
         if (defined $self->{spawn_interval}) {
             $pm_args{trap_signals}{USR1} = [ 'TERM', $self->{spawn_interval} ];
@@ -114,8 +114,6 @@ sub accept_loop {
                 or die "setsockopt(TCP_NODELAY) failed:$!";
 
             $self->handle_connection($conn);
-
-            $conn->close;
         }
     }
 }
@@ -135,20 +133,23 @@ sub handle_connection {
             and last;
     }
 
-    my $res = $self->dispatch($req);
-
-    Clutch::Util::write_all($conn, $res . $CRLF x 2, $self->{timeout}, $self);
+    my $cmd_method = 'do_' . Clutch::Util::no_to_cmd($req->{cmd_no});
+    $self->$cmd_method($conn, $req);
 
     return;
 }
 
-sub dispatch {
-    my ($self, $req) = @_;
+sub do_request {
+    my ($self, $conn, $req) = @_;
 
-    my $code = $self->{functions}->{$req->{function}}
-        or return "ERROR: unknow function";
-    my $res = $code->($req->{args});
-    return $res ? $res : "\0";
+    my $code = $self->{functions}->{$req->{function}};
+
+    my $res = $code ? ($code->($req->{args}) || $NULL)
+                    : "ERROR: unknow function";
+
+    Clutch::Util::write_all($conn, $res . $CRLF, $self->{timeout}, $self);
+
+    $conn->close();
 }
 
 sub register_admin {
