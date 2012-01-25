@@ -68,13 +68,23 @@ sub _get_worker_list {
     $self->{servers} = \@servers;
 }
 
+sub request_background {
+    my ($self, $function, $args) = @_;
+    $self->_request('request_background', $function, $args);
+}
+
 sub request {
     my ($self, $function, $args) = @_;
+    $self->_request('request', $function, $args);
+}
+
+sub _request {
+    my ($self, $cmd_name, $function, $args) = @_;
 
     my $server = $self->{dwr}->next;
     my $sock = Clutch::Util::new_client($server);
 
-    my $cmd = Clutch::Util::cmd_to_no('request');
+    my $cmd = Clutch::Util::cmd_to_no($cmd_name);
     my $msg = join($SPACE, $cmd, $function, $args) . $CRLF;
     Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
 

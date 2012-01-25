@@ -14,7 +14,8 @@ our $MAX_REQUEST_SIZE = 131072;
 our @EXPORT = qw($CRLF $SPACE $NULL $MAX_REQUEST_SIZE);
 
 our %CMD2NO = (
-    'request' => 1,
+    'request'            => 1,
+    'request_background' => 2,
 );
 my %NO2CMD = reverse %CMD2NO;
 
@@ -60,6 +61,7 @@ sub parse_read_buffer {
     if ( verify_buffer($buf) ) {
         trim_buffer(\$buf);
         ($ret->{cmd_no}, $ret->{function}, $ret->{args}) = split $SPACE, $buf;
+        $ret->{args} ||= '';
         return 1;
     }
 

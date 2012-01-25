@@ -13,9 +13,11 @@ our @EXPORT = qw(
     setup_listener
     accept_loop
     handle_connection
-    do_request
     register_admin
     register_function
+    dispatch
+    do_request
+    do_request_background
 );
 
 my $FUNCTIONS = +{};
@@ -150,6 +152,20 @@ sub do_request {
     Clutch::Util::write_all($conn, $res . $CRLF, $self->{timeout}, $self);
 
     $conn->close();
+}
+
+sub do_request_background {
+    my ($self, $conn, $req) = @_;
+
+    my $code = $self->{functions}->{$req->{function}};
+
+    my $res = $code ? "OK" : "ERROR: unknow function";
+    Clutch::Util::write_all($conn, $res . $CRLF, $self->{timeout}, $self);
+    $conn->close();
+
+    $code && $code->($req->{args});
+
+    return;
 }
 
 sub register_admin {
