@@ -149,7 +149,7 @@ sub do_request {
     my $res = $code ? ($code->($req->{args}) || $NULL)
                     : "ERROR: unknow function";
 
-    Clutch::Util::write_all($conn, $res . $CRLF, $self->{timeout}, $self);
+    Clutch::Util::write_all($conn, $res . $CRLF x 2, $self->{timeout}, $self);
 
     $conn->close();
 }
@@ -160,7 +160,7 @@ sub do_request_background {
     my $code = $self->{functions}->{$req->{function}};
 
     my $res = $code ? "OK" : "ERROR: unknow function";
-    Clutch::Util::write_all($conn, $res . $CRLF, $self->{timeout}, $self);
+    Clutch::Util::write_all($conn, $res . $CRLF x 2, $self->{timeout}, $self);
     $conn->close();
 
     $code && $code->($req->{args});
@@ -173,7 +173,7 @@ sub register_admin {
 
     my $sock = Clutch::Util::new_client($self->{admin_address});
 
-    my $msg = join($CRLF, 'register', $self->{address} .'=100') . $CRLF x 2;
+    my $msg = join($DELIMITER, 'register', $self->{address} .'=100') . $CRLF x 2;
     Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
 
     my $buf='';

@@ -6,18 +6,20 @@ use IO::Socket::INET;
 use POSIX qw(EINTR EAGAIN EWOULDBLOCK);
 use Socket qw(IPPROTO_TCP TCP_NODELAY);
 
-our $CRLF  = "\x0d\x0a";
-our $SPACE = "\x20";
-our $NULL  = "\x00";
+our $CRLF      = "\x0d\x0a";
+our $DELIMITER = "\x20";
+our $NULL      = "\x00";
 our $MAX_REQUEST_SIZE = 131072;
 
-our @EXPORT = qw($CRLF $SPACE $NULL $MAX_REQUEST_SIZE);
+our @EXPORT = qw($CRLF $DELIMITER $NULL $MAX_REQUEST_SIZE);
 
 our %CMD2NO = (
     'request'            => 1,
     'request_background' => 2,
 );
 my %NO2CMD = reverse %CMD2NO;
+
+our $CRLF_REGEXP  = qr|\x0d?\x0a|;
 
 sub new_client {
     my $address = shift;
@@ -42,17 +44,14 @@ sub no_to_cmd {
     return $NO2CMD{$no} or die "unknown Clutch command no: $no";
 }
 
-# double line break indicates end of header; parse it
 sub verify_buffer {
     my $buf = shift;
-    # FIXME /o
-    $buf =~ /^(.*?$CRLF)/s ? 1 : 0;
+    $buf =~ /^(.*?\x0d?\x0a\x0d?\x0a)$/s ? 1 : 0;
 }
 
 sub trim_buffer {
     my $buf = shift;
-    # FIXME /o
-    $$buf =~ s/$CRLF$//;
+    $$buf =~ s/\x0d?\x0a\x0d?\x0a$//;
 }
 
 sub parse_read_buffer {
@@ -60,7 +59,7 @@ sub parse_read_buffer {
 
     if ( verify_buffer($buf) ) {
         trim_buffer(\$buf);
-        ($ret->{cmd_no}, $ret->{function}, $ret->{args}) = split $SPACE, $buf;
+        ($ret->{cmd_no}, $ret->{function}, $ret->{args}) = split /$DELIMITER+/o, $buf;
         $ret->{args} ||= '';
         return 1;
     }
