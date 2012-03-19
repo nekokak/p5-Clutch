@@ -19,7 +19,13 @@ test_tcp(
         {
             $res = $client->request('function_name', 'args');
             note $res;
-            is $res, "response=args";
+            is_deeply $res, +{response => 'args'};
+        }
+
+        {
+            $res = $client->request('function_name', +{name => 'nekokak'});
+            note $res;
+            is_deeply $res, +{response => +{name => 'nekokak'}};
         }
 
         {

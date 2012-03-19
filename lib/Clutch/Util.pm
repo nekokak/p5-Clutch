@@ -5,6 +5,7 @@ use parent qw(Exporter);
 use IO::Socket::INET;
 use POSIX qw(EINTR EAGAIN EWOULDBLOCK);
 use Socket qw(IPPROTO_TCP TCP_NODELAY);
+use JSON::XS ();
 
 our $CRLF      = "\x0d\x0a";
 our $DELIMITER = "\x20";
@@ -15,11 +16,9 @@ our @EXPORT = qw($CRLF $DELIMITER $NULL $MAX_REQUEST_SIZE);
 
 our %CMD2NO = (
     'request'            => 1,
-    'request_background' => 2,
+    'request_background' => 1,
 );
-my %NO2CMD = reverse %CMD2NO;
-
-our $CRLF_REGEXP  = qr|\x0d?\x0a|;
+our $JSON;
 
 sub new_client {
     my $address = shift;
@@ -34,24 +33,22 @@ sub new_client {
     $sock;
 }
 
-sub cmd_to_no {
-    my $name = shift;
-    return $CMD2NO{$name} or die "unknown Clutch command name: $name";
+sub json {
+    $JSON ||= JSON::XS->new->allow_nonref;
 }
 
-sub no_to_cmd {
-    my $no = shift;
-    return $NO2CMD{$no} or die "unknown Clutch command no: $no";
+sub support_cmd {
+    $CMD2NO{+shift};
 }
 
 sub verify_buffer {
     my $buf = shift;
-    $buf =~ /^(.*?\x0d?\x0a\x0d?\x0a)$/s ? 1 : 0;
+    $buf =~ /$CRLF$/o ? 1 : 0;
 }
 
 sub trim_buffer {
     my $buf = shift;
-    $$buf =~ s/\x0d?\x0a\x0d?\x0a$//;
+    $$buf =~ s/$CRLF$//o;
 }
 
 sub parse_read_buffer {
@@ -59,8 +56,9 @@ sub parse_read_buffer {
 
     if ( verify_buffer($buf) ) {
         trim_buffer(\$buf);
-        ($ret->{cmd_no}, $ret->{function}, $ret->{args}) = split /$DELIMITER+/o, $buf;
+        ($ret->{cmd}, $ret->{function}, $ret->{args}) = split /$DELIMITER+/o, $buf;
         $ret->{args} ||= '';
+        $ret->{args} = json->decode($ret->{args});
         return 1;
     }
 

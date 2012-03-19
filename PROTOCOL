@@ -1,15 +1,9 @@
 Clutch's Protocol
 
-$CMD_NO\s+$FUNCTION_NAME\s+$ARGS\r?\n
-\r?\n
+$CMD $FUNCTION_NAME $JSON_ARGS\r\n
 
-$CMD_NO\s+$FUNCTION_NAME\s+$ARGS\r?\n
-$ARGS\r?\n
-$ARGS\r?\n
-\r?\n
-
-$CMD_NO\s+$FUNCTION_NAME\s+$ARGS\r?\n
-$FUNCTION_NAME\s+$ARGS\r?\n
-$FUNCTION_NAME\s+$ARGS\r?\n
-\r?\n
+$MULTI_CMD\r\n
+$FUNCTION_NAME $JSON_ARGS\r\n
+$FUNCTION_NAME $JSON_ARGS\r\n
+END\r\n
 

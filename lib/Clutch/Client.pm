@@ -9,17 +9,12 @@ sub new {
     my %args = @_ == 1 ? %{$_[0]} : @_;
 
     %args = (
-        servers       => undef,
-        admin_address => undef,
-        timeout       => 10,
+        servers => undef,
+        timeout => 10,
         %args,
     );
 
     my $self = bless \%args, $class;
-
-    if ($self->{admin_address}) {
-        $self->_get_worker_list();
-    }
 
     my @servers;
     for my $row (@{$self->{servers}}) {
@@ -30,42 +25,10 @@ sub new {
             push @servers, $row;
         }
     }
+    # FIXME: no use DWR
     $self->{dwr} = Data::WeightedRoundRobin->new(\@servers);
 
     $self;
-}
-
-sub _get_worker_list {
-    my $self = shift;
-
-    my $sock = Clutch::Util::new_client($self->{admin_address});
-
-    my $cmd = Clutch::Util::cmd_to_no('request');
-    my $msg = join($DELIMITER, $cmd, 'get_servers') . $CRLF x 2;
-    Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
-
-    my $buf='';
-    while (1) {
-        my $rlen = Clutch::Util::read_timeout(
-            $sock, \$buf, $MAX_REQUEST_SIZE - length($buf), length($buf), $self->{timeout}, $self
-        ) or return;
-
-        Clutch::Util::verify_buffer($buf) and do {
-            Clutch::Util::trim_buffer(\$buf);
-            last;
-        }
-    }
-    $sock->close();
-
-    my @servers;
-    for my $line (split ',', $buf) {
-        my ($address, $weight) = split '=', $line;
-        push @servers, +{
-            address => $address,
-            weight  => $weight,
-        };
-    }
-    $self->{servers} = \@servers;
 }
 
 sub request_background {
@@ -84,8 +47,8 @@ sub _request {
     my $server = $self->{dwr}->next;
     my $sock = Clutch::Util::new_client($server);
 
-    my $cmd = Clutch::Util::cmd_to_no($cmd_name);
-    my $msg = join($DELIMITER, $cmd, $function, $args) . $CRLF x 2;
+    my $json_args = Clutch::Util::json->encode($args);
+    my $msg = join($DELIMITER, $cmd_name, $function, $json_args) . $CRLF;
     Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
 
     my $buf='';
@@ -100,7 +63,7 @@ sub _request {
         }
     }
     $sock->close();
-    return $buf eq $NULL ? undef : $buf;
+    return $buf eq $NULL ? undef : Clutch::Util::json->decode($buf);
 }
 
 1;
@@ -141,10 +104,6 @@ If hash reference, the keys are address (scalar), weight (positive rational numb
 The server address is in the form host:port for network TCP connections
 
 Client will distribute Data::WeightedRoundRobin.
-
-=item $opts{admin_address}
-
-inquiry workers address from admin daemon, if admin daemon starting.
 
 =item $opts{timeout}
 

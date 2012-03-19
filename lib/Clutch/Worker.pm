@@ -13,7 +13,6 @@ our @EXPORT = qw(
     setup_listener
     accept_loop
     handle_connection
-    register_admin
     register_function
     dispatch
     do_request
@@ -28,7 +27,6 @@ sub new {
 
     %args = (
         address              => undef,
-        admin_address        => undef,
         functions            => $FUNCTIONS,
         timeout              => 10,
         max_workers          => 0,
@@ -40,9 +38,6 @@ sub new {
 
     my $self = bless \%args, $class;
 
-    if ($self->{admin_address}) {
-        $self->register_admin();
-    }
     $self;
 }
 
@@ -132,13 +127,24 @@ sub handle_connection {
         ) or return;
 
         Clutch::Util::parse_read_buffer($buf, $req)
-            and last;
+          and last;
     }
 
-    my $cmd_method = 'do_' . Clutch::Util::no_to_cmd($req->{cmd_no});
-    $self->$cmd_method($conn, $req);
+    if (Clutch::Util::support_cmd($req->{cmd})) {
+        my $cmd_method = 'do_' . $req->{cmd};
+        $self->$cmd_method($conn, $req);
+    }
+    else {
+        $self->do_error($conn, $req);
+    }
 
     return;
+}
+
+sub do_error {
+    my ($self, $conn, $req) = @_;
+    Clutch::Util::write_all($conn, "CLIENT_ERROR: unknow command$CRLF", $self->{timeout}, $self);
+    $conn->close();
 }
 
 sub do_request {
@@ -149,7 +155,8 @@ sub do_request {
     my $res = $code ? ($code->($req->{args}) || $NULL)
                     : "ERROR: unknow function";
 
-    Clutch::Util::write_all($conn, $res . $CRLF x 2, $self->{timeout}, $self);
+    my $json = $res eq $NULL ? $NULL : Clutch::Util::json->encode($res);
+    Clutch::Util::write_all($conn, $json . $CRLF, $self->{timeout}, $self);
 
     $conn->close();
 }
@@ -160,7 +167,9 @@ sub do_request_background {
     my $code = $self->{functions}->{$req->{function}};
 
     my $res = $code ? "OK" : "ERROR: unknow function";
-    Clutch::Util::write_all($conn, $res . $CRLF x 2, $self->{timeout}, $self);
+
+    my $json = Clutch::Util::json->encode($res);
+    Clutch::Util::write_all($conn, $json . $CRLF, $self->{timeout}, $self);
     $conn->close();
 
     $code && $code->($req->{args});
@@ -168,32 +177,6 @@ sub do_request_background {
     return;
 }
 
-sub register_admin {
-    my $self = shift;
-
-    my $sock = Clutch::Util::new_client($self->{admin_address});
-
-    my $msg = join($DELIMITER, 'register', $self->{address} .'=100') . $CRLF x 2;
-    Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
-
-    my $buf='';
-    while (1) {
-        my $rlen = Clutch::Util::read_timeout(
-            $sock, \$buf, $MAX_REQUEST_SIZE - length($buf), length($buf), $self->{timeout}, $self
-        ) or return;
-
-        Clutch::Util::verify_buffer($buf) and do {
-            Clutch::Util::trim_buffer(\$buf);
-            last;
-        }
-    }
-    $sock->close();
-
-    unless ($buf eq 'OK') {
-        die "can't set worker address for admin server";
-    }
-}
- 
 sub register_function ($$) {
     my ($function, $code) = @_;
     $FUNCTIONS->{$function} = $code;
@@ -275,10 +258,6 @@ $callback_coderef's first argument is a client request parameter.
 =item $opts{address}
 
 worker process listen address.
-
-=item $opts{admin_address}
-
-worker process can tells itself address for admin daemon, if admin daemon starting.
 
 =item $opts{timeout}
 
