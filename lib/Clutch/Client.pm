@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use Clutch::Util;
 use Data::WeightedRoundRobin;
+use IO::Select;
 
 sub new {
     my $class = shift;
@@ -66,6 +67,62 @@ sub _request {
     return $buf eq $NULL ? undef : Clutch::Util::json->decode($buf);
 }
 
+sub request_multi {
+    my ($self, $args) = @_;
+    $self->_request_multi('request', $args);
+}
+
+sub request_background_multi {
+    my ($self, $args) = @_;
+    $self->_request_multi('request_background', $args);
+}
+
+sub _request_multi {
+    my ($self, $cmd_name, $args) = @_;
+
+    my $request_count = scalar(@$args);
+    my $is = IO::Select->new;
+
+    my %sockets_map;
+    for my $i (0 .. ($request_count - 1)) {
+        my $server = $self->{dwr}->next;
+        my $sock = Clutch::Util::new_client($server);
+        $is->add($sock);
+        $sockets_map{$sock}=$i;
+
+        my $json_args = Clutch::Util::json->encode(($args->[$i]->{args}||''));
+        my $msg = join($DELIMITER, $cmd_name, $args->[$i]->{function}, $json_args) . $CRLF;
+        Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
+    }
+
+    my @res;
+    while ($request_count) {
+        if (my @ready = $is->can_read($self->{timeout})) {;
+            for my $sock (@ready) {
+                my $buf='';
+                while (1) {
+                    my $rlen = Clutch::Util::read_timeout(
+                        $sock, \$buf, $MAX_REQUEST_SIZE - length($buf), length($buf), $self->{timeout}, $self
+                    ) or return;
+
+                    Clutch::Util::verify_buffer($buf) and do {
+                        Clutch::Util::trim_buffer(\$buf);
+                        last;
+                    }
+                }
+                my $idx = $sockets_map{$sock};
+
+                $request_count--;
+                $is->remove($sock);
+                $sock->close();
+
+                $res[$idx] = $buf eq $NULL ? undef : Clutch::Util::json->decode($buf);
+            }
+        }
+    }
+    wantarray ? @res : \@res;
+}
+
 1;
 
 __END__
@@ -124,6 +181,68 @@ worker process function name.
 get over client argument for worker process.
 
 $args must be single line data.
+
+=back
+
+=head2 my $res = $client->request_background($function_name, $args);
+
+=over
+
+=item $function_name
+
+worker process function name.
+
+=item $args
+
+get over client argument for worker process.
+
+$args must be single line data.
+
+=item $res
+
+When the worker accepts the background request and returns the "OK"
+
+=back
+
+=head2 my $res = $client->request_multi(\@args);
+
+=over
+
+=item $args->[$i]->{function}
+
+worker process function name.
+
+=item $args->[$i}->{args}
+
+get over client argument for worker process.
+
+$args must be single line data.
+
+=item $res
+
+worker response here.
+The result is order request.
+
+=back
+
+=head2 my $res = $client->request_background_multi(\@args);
+
+=over
+
+=item $args->[$i]->{function}
+
+worker process function name.
+
+=item $args->[$i}->{args}
+
+get over client argument for worker process.
+
+$args must be single line data.
+
+=item $res
+
+worker response here.
+The result is order request.
 
 =back
 

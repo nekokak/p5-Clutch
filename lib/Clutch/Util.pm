@@ -17,6 +17,7 @@ our @EXPORT = qw($CRLF $DELIMITER $NULL $MAX_REQUEST_SIZE);
 our %CMD2NO = (
     'request'            => 1,
     'request_background' => 1,
+    'request_multi'      => 1,
 );
 our $JSON;
 

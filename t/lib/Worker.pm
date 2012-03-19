@@ -15,6 +15,18 @@ register_function(
 );
 
 register_function(
+    'function_rand' => sub {
+        my $args = shift;
+        my $sleep = int(rand(3));
+        note explain +{pid => $$, sleep => $sleep, args => $args};
+        sleep($sleep);
+        my $res = +{response => $args};
+        note explain $res;
+        $res;
+    }
+);
+
+register_function(
     'foo' => sub {
         my $args = shift;
         note 'execute';
