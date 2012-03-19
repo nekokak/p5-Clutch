@@ -4,10 +4,14 @@ use warnings;
 use Clutch::Util;
 use Data::WeightedRoundRobin;
 use IO::Select;
+use Carp ();
 
 sub new {
     my $class = shift;
     my %args = @_ == 1 ? %{$_[0]} : @_;
+
+
+    Carp::croak "Mandatory parameter 'servers'" unless $args{servers};
 
     %args = (
         servers => undef,
@@ -26,9 +30,7 @@ sub new {
             push @servers, $row;
         }
     }
-    # FIXME: no use DWR
     $self->{dwr} = Data::WeightedRoundRobin->new(\@servers);
-
     $self;
 }
 
@@ -69,12 +71,24 @@ sub _request {
 
 sub request_multi {
     my ($self, $args) = @_;
+    $self->_verify_multi_args($args);
     $self->_request_multi('request', $args);
 }
 
 sub request_background_multi {
     my ($self, $args) = @_;
+    $self->_verify_multi_args($args);
     $self->_request_multi('request_background', $args);
+}
+
+sub _verify_multi_args {
+    my ($self, $args) = @_;
+
+    for my $arg (@$args) {
+        if ($arg->{function} eq '') {
+            Carp::croak "there is no function to the argument of multi_request";
+        }
+    }
 }
 
 sub _request_multi {
@@ -97,7 +111,7 @@ sub _request_multi {
 
     my @res;
     while ($request_count) {
-        if (my @ready = $is->can_read($self->{timeout})) {;
+        if (my @ready = $is->can_read($self->{timeout})) {
             for my $sock (@ready) {
                 my $buf='';
                 while (1) {
@@ -212,7 +226,7 @@ When the worker accepts the background request and returns the "OK"
 
 worker process function name.
 
-=item $args->[$i}->{args}
+=item $args->[$i]->{args}
 
 get over client argument for worker process.
 
@@ -233,7 +247,7 @@ The result is order request.
 
 worker process function name.
 
-=item $args->[$i}->{args}
+=item $args->[$i]->{args}
 
 get over client argument for worker process.
 
