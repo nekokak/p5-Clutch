@@ -3,7 +3,7 @@ use 5.008_001;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 1;
 __END__
@@ -11,10 +11,6 @@ __END__
 =head1 NAME
 
 Clutch - distributed job system
-
-=head1 VERSION
-
-This document describes Clutch version 0.01.
 
 =head1 SYNOPSIS
 
