@@ -9,7 +9,6 @@ inc/Module/Install/Metadata.pm
 inc/Module/Install/Repository.pm
 inc/Module/Install/WriteAll.pm
 lib/Clutch.pm
-lib/Clutch/.Worker.pm.swp
 lib/Clutch/Client.pm
 lib/Clutch/Util.pm
 lib/Clutch/Worker.pm
