@@ -10,9 +10,7 @@ test_tcp(
     client => sub {
         my ($port, $server_pid) = @_;
         my $client = Clutch::Client->new(
-            servers => [
-                +{ address => '127.0.0.1:'.$port },
-            ],
+            servers => ['127.0.0.1:'.$port]
         );
 
         my $res;

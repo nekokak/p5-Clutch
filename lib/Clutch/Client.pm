@@ -2,7 +2,6 @@ package Clutch::Client;
 use strict;
 use warnings;
 use Clutch::Util;
-use Data::WeightedRoundRobin;
 use IO::Select;
 use Carp ();
 
@@ -10,28 +9,16 @@ sub new {
     my $class = shift;
     my %args = @_ == 1 ? %{$_[0]} : @_;
 
-
     Carp::croak "Mandatory parameter 'servers'" unless $args{servers};
 
-    %args = (
+    my $rr = delete $args{rr} || 'Clutch::Client::RR';
+
+    bless {
         servers => undef,
         timeout => 10,
+        rr      => $rr->new($args{servers}),
         %args,
-    );
-
-    my $self = bless \%args, $class;
-
-    my @servers;
-    for my $row (@{$self->{servers}}) {
-        if (ref($row) eq 'HASH') {
-            push @servers, +{ value => $row->{address}, weight => $row->{weight} };
-        }
-        else {
-            push @servers, $row;
-        }
-    }
-    $self->{dwr} = Data::WeightedRoundRobin->new(\@servers);
-    $self;
+    }, $class;
 }
 
 sub request_background {
@@ -47,7 +34,7 @@ sub request {
 sub _request {
     my ($self, $cmd_name, $function, $args) = @_;
 
-    my $server = $self->{dwr}->next;
+    my $server = $self->{rr}->next;
     my $sock = Clutch::Util::new_client($server);
 
     my $json_args = Clutch::Util::json->encode($args);
@@ -99,7 +86,7 @@ sub _request_multi {
 
     my %sockets_map;
     for my $i (0 .. ($request_count - 1)) {
-        my $server = $self->{dwr}->next;
+        my $server = $self->{rr}->next;
         my $sock = Clutch::Util::new_client($server);
         $is->add($sock);
         $sockets_map{$sock}=$i;
@@ -137,6 +124,22 @@ sub _request_multi {
     wantarray ? @res : \@res;
 }
 
+package
+ Clutch::Client::RR;
+
+sub new {
+    my ($class, $servers) = @_;
+    bless +{
+        servers => $servers,
+    }, $class;
+} 
+
+sub next {
+    my $self = shift;
+    push(@{$self->{servers}}, shift(@{$self->{servers}}));
+    $self->{servers}[0];
+}
+
 1;
 
 __END__
@@ -153,9 +156,7 @@ Clutch::Client - distributed job system's client class
     use Clutch::Client;
     my $args = shift || die 'missing args';
     my $client = Clutch::Client->new(
-        servers => [
-            +{ address => "$worker_ip:$worker_port" },
-        ],
+        servers => [ "$worker_ip:$worker_port" ],
     );
     my $res = $client->request('echo', $args);
     print $res, "\n";
@@ -170,11 +171,9 @@ Clutch::Client - distributed job system's client class
 
 The value is a reference to an array of worker addresses.
 
-If hash reference, the keys are address (scalar), weight (positive rational number)
-
 The server address is in the form host:port for network TCP connections
 
-Client will distribute Data::WeightedRoundRobin.
+Client will distribute basic RoundRobin.
 
 =item $opts{timeout}
 
