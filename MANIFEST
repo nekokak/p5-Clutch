@@ -1,6 +1,5 @@
 .dim.pl
 .shipit
-bin/clutch-admin.pl
 Changes
 inc/Module/Install.pm
 inc/Module/Install/AuthorTests.pm
@@ -8,9 +7,9 @@ inc/Module/Install/Base.pm
 inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
 inc/Module/Install/Repository.pm
-inc/Module/Install/Scripts.pm
 inc/Module/Install/WriteAll.pm
 lib/Clutch.pm
+lib/Clutch/.Worker.pm.swp
 lib/Clutch/Client.pm
 lib/Clutch/Util.pm
 lib/Clutch/Worker.pm
@@ -28,6 +27,3 @@ t/004_request_background_multi.t
 t/lib/Worker.pm
 xt/perlcritic.t
 xt/pod.t
-xt/podcoverage.t
-xt/podspell.t
-xt/podsynopsis.t

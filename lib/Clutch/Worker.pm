@@ -177,7 +177,7 @@ sub do_request_background {
     return;
 }
 
-sub register_function ($$) {
+sub register_function ($$) { ## no critic
     my ($function, $code) = @_;
     $FUNCTIONS->{$function} = $code;
 }
