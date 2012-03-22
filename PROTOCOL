@@ -2,8 +2,3 @@ Clutch's Protocol
 
 $CMD $FUNCTION_NAME $JSON_ARGS\r\n
 
-$MULTI_CMD\r\n
-$FUNCTION_NAME $JSON_ARGS\r\n
-$FUNCTION_NAME $JSON_ARGS\r\n
-END\r\n
-
