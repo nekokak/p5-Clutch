@@ -34,5 +34,20 @@ register_function(
     }
 );
 
+register_function(
+    'cascade_root' => sub {
+        my $args = shift;
+        my $res = cascade('cascade_sub', $args);
+        return $res;
+    }
+);
+
+register_function(
+    'cascade_sub' => sub {
+        my $args = shift;
+        return 'cascaded';
+    }
+);
+
 1;
 

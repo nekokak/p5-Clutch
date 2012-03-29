@@ -17,9 +17,11 @@ our @EXPORT = qw(
     dispatch
     do_request
     do_request_background
+    cascade
 );
 
 my $FUNCTIONS = +{};
+my $CONTEXT;
 
 sub new {
     my $class = shift;
@@ -37,7 +39,7 @@ sub new {
     );
 
     my $self = bless \%args, $class;
-
+    $CONTEXT = $self;
     $self;
 }
 
@@ -175,6 +177,15 @@ sub do_request_background {
     $code && $code->($req->{args});
 
     return;
+}
+
+sub cascade {
+    my ($function, $args) = @_;
+
+    my $code = $CONTEXT->{functions}->{$function};
+    my $res  = $code ? ($code->($args) || $NULL)
+                     : "ERROR: unknow function";
+    $res;
 }
 
 sub register_function ($$) { ## no critic
