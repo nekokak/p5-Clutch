@@ -153,12 +153,10 @@ sub do_request {
     my ($self, $conn, $req) = @_;
 
     my $code = $self->{functions}->{$req->{function}};
+    my $res  = $code ? ($code->($req->{args}) || '')
+                     : "ERROR: unknow function";
 
-    my $res = $code ? ($code->($req->{args}) || $NULL)
-                    : "ERROR: unknow function";
-
-    my $json = $res eq $NULL ? $NULL : Clutch::Util::json->encode($res);
-    Clutch::Util::write_all($conn, $json . $CRLF, $self->{timeout}, $self);
+    Clutch::Util::write_all($conn, Clutch::Util::make_response($res), $self->{timeout}, $self);
 
     $conn->close();
 }
@@ -167,11 +165,9 @@ sub do_request_background {
     my ($self, $conn, $req) = @_;
 
     my $code = $self->{functions}->{$req->{function}};
+    my $res  = $code ? "OK" : "ERROR: unknow function";
 
-    my $res = $code ? "OK" : "ERROR: unknow function";
-
-    my $json = Clutch::Util::json->encode($res);
-    Clutch::Util::write_all($conn, $json . $CRLF, $self->{timeout}, $self);
+    Clutch::Util::write_all($conn, Clutch::Util::make_response($res), $self->{timeout}, $self);
     $conn->close();
 
     $code && $code->($req->{args});
@@ -183,7 +179,7 @@ sub cascade {
     my ($function, $args) = @_;
 
     my $code = $CONTEXT->{functions}->{$function};
-    my $res  = $code ? ($code->($args) || $NULL)
+    my $res  = $code ? ($code->($args) || '')
                      : "ERROR: unknow function";
     $res;
 }
@@ -257,6 +253,22 @@ client process specific this functin name.
 client process call the function, execute thid $callback_coderef.
 
 $callback_coderef's first argument is a client request parameter.
+
+=back
+
+=head2 cascade($function_name, $args);
+
+call self worker function.
+
+=over
+
+=item $function_name
+
+worker process function name.
+
+=item $args
+
+worker argument.
 
 =back
 

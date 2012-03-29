@@ -9,10 +9,9 @@ use JSON::XS ();
 
 our $CRLF      = "\x0d\x0a";
 our $DELIMITER = "\x20";
-our $NULL      = "\x00";
 our $MAX_REQUEST_SIZE = 131072;
 
-our @EXPORT = qw($CRLF $DELIMITER $NULL $MAX_REQUEST_SIZE);
+our @EXPORT = qw($CRLF $DELIMITER $MAX_REQUEST_SIZE);
 
 our %CMD2NO = (
     'request'            => 1,
@@ -42,21 +41,31 @@ sub support_cmd {
     $CMD2NO{+shift};
 }
 
-sub verify_buffer {
-    my $buf = shift;
-    $buf =~ /$CRLF$/o ? 1 : 0;
+sub make_request {
+    my ($cmd_name, $function, $args) = @_;
+    join($DELIMITER, $cmd_name, $function, json->encode($args)) . $CRLF;
 }
 
-sub trim_buffer {
+sub make_response {
+    my $res = shift;
+    json->encode($res) . $CRLF;
+}
+
+sub verify_buffer {
     my $buf = shift;
-    $$buf =~ s/$CRLF$//o;
+    my $rv = ($buf =~ /$CRLF$/o ? 1 : 0);
+    if ($rv) {
+        $buf =~ s/$CRLF$//o;
+        return 1;
+    } else {
+        return;
+    }
 }
 
 sub parse_read_buffer {
     my ($buf, $ret) = @_;
 
     if ( verify_buffer($buf) ) {
-        trim_buffer(\$buf);
         ($ret->{cmd}, $ret->{function}, $ret->{args}) = split /$DELIMITER+/o, $buf;
         $ret->{args} ||= '';
         $ret->{args} = json->decode($ret->{args});

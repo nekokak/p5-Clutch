@@ -37,8 +37,7 @@ sub _request {
     my $server = $self->{rr}->next;
     my $sock = Clutch::Util::new_client($server);
 
-    my $json_args = Clutch::Util::json->encode($args);
-    my $msg = join($DELIMITER, $cmd_name, $function, $json_args) . $CRLF;
+    my $msg = Clutch::Util::make_request($cmd_name, $function, $args);
     Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
 
     my $buf='';
@@ -47,13 +46,10 @@ sub _request {
             $sock, \$buf, $MAX_REQUEST_SIZE - length($buf), length($buf), $self->{timeout}, $self
         ) or return;
 
-        Clutch::Util::verify_buffer($buf) and do {
-            Clutch::Util::trim_buffer(\$buf);
-            last;
-        }
+        Clutch::Util::verify_buffer($buf) and last;
     }
     $sock->close();
-    return $buf eq $NULL ? undef : Clutch::Util::json->decode($buf);
+    return $buf ? Clutch::Util::json->decode($buf) : undef;
 }
 
 sub request_multi {
@@ -91,8 +87,7 @@ sub _request_multi {
         $is->add($sock);
         $sockets_map{$sock}=$i;
 
-        my $json_args = Clutch::Util::json->encode(($args->[$i]->{args}||''));
-        my $msg = join($DELIMITER, $cmd_name, $args->[$i]->{function}, $json_args) . $CRLF;
+        my $msg = Clutch::Util::make_request($cmd_name, $args->[$i]->{function}, ($args->[$i]->{args}||''));
         Clutch::Util::write_all($sock, $msg, $self->{timeout}, $self);
     }
 
@@ -106,10 +101,7 @@ sub _request_multi {
                         $sock, \$buf, $MAX_REQUEST_SIZE - length($buf), length($buf), $self->{timeout}, $self
                     ) or return;
 
-                    Clutch::Util::verify_buffer($buf) and do {
-                        Clutch::Util::trim_buffer(\$buf);
-                        last;
-                    }
+                    Clutch::Util::verify_buffer($buf) and last;
                 }
                 my $idx = $sockets_map{$sock};
 
@@ -117,7 +109,7 @@ sub _request_multi {
                 $is->remove($sock);
                 $sock->close();
 
-                $res[$idx] = $buf eq $NULL ? undef : Clutch::Util::json->decode($buf);
+                $res[$idx] = $buf ? Clutch::Util::json->decode($buf) : undef;
             }
         }
     }
@@ -258,10 +250,6 @@ worker response here.
 The result is order request.
 
 =back
-
-=head1 SEE ALSO
-
-L<Data::WeightedRoundRobin>
 
 =cut
 
