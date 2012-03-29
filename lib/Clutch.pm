@@ -45,9 +45,7 @@ Clutch - distributed job system
     use Clutch::Client;
     my $args = shift || die 'missing args';
     my $client = Clutch::Client->new(
-        servers => [
-            +{ address => "$worker_ip:$worker_port" },
-        ],
+        servers => [ "$worker_ip:$worker_port" ],
     );
     my $res = $client->request('echo', $args);
     print $res, "\n";
