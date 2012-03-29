@@ -145,7 +145,7 @@ sub handle_connection {
 
 sub do_error {
     my ($self, $conn, $req) = @_;
-    Clutch::Utils::write_all($conn, "CLIENT_ERROR: unknow command$CRLF", $self->{timeout}, $self);
+    Clutch::Utils::write_all($conn, Clutch::Utils::make_response('CLIENT_ERROR: unknow command'), $self->{timeout}, $self);
     $conn->close();
 }
 
@@ -179,9 +179,7 @@ sub cascade {
     my ($function, $args) = @_;
 
     my $code = $CONTEXT->{functions}->{$function};
-    my $res  = $code ? ($code->($args) || '')
-                     : "ERROR: unknow function";
-    $res;
+    $code ? ($code->($args) || '') : "ERROR: unknow function";
 }
 
 sub register_function ($$) { ## no critic
