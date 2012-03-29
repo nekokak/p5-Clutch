@@ -1,4 +1,5 @@
-package Clutch::Util;
+package # hide
+  Clutch::Utils;
 use strict;
 use warnings;
 use parent qw(Exporter);

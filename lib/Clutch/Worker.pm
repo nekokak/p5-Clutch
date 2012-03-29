@@ -4,7 +4,7 @@ use warnings;
 use parent qw(Exporter);
 use IO::Socket::INET;
 use Socket qw(IPPROTO_TCP TCP_NODELAY);
-use Clutch::Util;
+use Clutch::Utils;
 use Parallel::Prefork;
 
 our @EXPORT = qw(
@@ -124,15 +124,15 @@ sub handle_connection {
     my $req = +{};
 
     while (1) {
-        my $rlen = Clutch::Util::read_timeout(
+        my $rlen = Clutch::Utils::read_timeout(
             $conn, \$buf, $MAX_REQUEST_SIZE - length($buf), length($buf), $self->{timeout}, $self
         ) or return;
 
-        Clutch::Util::parse_read_buffer($buf, $req)
+        Clutch::Utils::parse_read_buffer($buf, $req)
           and last;
     }
 
-    if (Clutch::Util::support_cmd($req->{cmd})) {
+    if (Clutch::Utils::support_cmd($req->{cmd})) {
         my $cmd_method = 'do_' . $req->{cmd};
         $self->$cmd_method($conn, $req);
     }
@@ -145,7 +145,7 @@ sub handle_connection {
 
 sub do_error {
     my ($self, $conn, $req) = @_;
-    Clutch::Util::write_all($conn, "CLIENT_ERROR: unknow command$CRLF", $self->{timeout}, $self);
+    Clutch::Utils::write_all($conn, "CLIENT_ERROR: unknow command$CRLF", $self->{timeout}, $self);
     $conn->close();
 }
 
@@ -156,7 +156,7 @@ sub do_request {
     my $res  = $code ? ($code->($req->{args}) || '')
                      : "ERROR: unknow function";
 
-    Clutch::Util::write_all($conn, Clutch::Util::make_response($res), $self->{timeout}, $self);
+    Clutch::Utils::write_all($conn, Clutch::Utils::make_response($res), $self->{timeout}, $self);
 
     $conn->close();
 }
@@ -167,7 +167,7 @@ sub do_request_background {
     my $code = $self->{functions}->{$req->{function}};
     my $res  = $code ? "OK" : "ERROR: unknow function";
 
-    Clutch::Util::write_all($conn, Clutch::Util::make_response($res), $self->{timeout}, $self);
+    Clutch::Utils::write_all($conn, Clutch::Utils::make_response($res), $self->{timeout}, $self);
     $conn->close();
 
     $code && $code->($req->{args});
