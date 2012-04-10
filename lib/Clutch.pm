@@ -62,11 +62,13 @@ the worker process itself receives a request.
 
 L<Parallel::Prefork>
 
-=head1 BUGS
+=head1 BUGS & SUPPORT
 
 All complex software has bugs lurking in it, and this module is no
 exception. If you find a bug please either email me, or add the bug
 to cpan-RT.
+
+irc: #qudo@irc.perl.org
 
 =head1 SEE ALSO
 

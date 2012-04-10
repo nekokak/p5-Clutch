@@ -1,6 +1,6 @@
 Revision history for Perl extension Clutch
 
-0.05 2012/03/30
+0.05 2012/04/11
     - add cascade method
     - code refactoring
     - some docs fixed
