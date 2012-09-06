@@ -35,6 +35,7 @@ sub new {
         spawn_interval       => 0,
         err_respawn_interval => undef,
         max_reqs_per_child   => 100,
+        min_reqs_per_child   => 0,
         %args,
     );
 
@@ -82,7 +83,7 @@ sub run {
         my $pm = Parallel::Prefork->new(\%pm_args);
         while ($pm->signal_received !~ /^(TERM|USR1)$/) {
             $pm->start and next;
-            $self->accept_loop;
+            $self->accept_loop($self->_calc_reqs_per_child);
             $pm->finish;
         }
         $pm->wait_all_children;
@@ -90,17 +91,17 @@ sub run {
         # run directly
         local $SIG{TERM} = sub { exit 0; };
         while (1) {
-            $self->accept_loop;
+            $self->accept_loop($self->_calc_reqs_per_child);
         }
     }
 }
 
 sub accept_loop {
-    my $self = shift;
+    my ($self, $max_reqs_per_child) = @_;
 
     my $proc_req_count = 0;
 
-    while (! defined $self->{max_reqs_per_child} || $proc_req_count < $self->{max_reqs_per_child}) {
+    while (! defined $max_reqs_per_child || $proc_req_count < $max_reqs_per_child) {
         local $SIG{PIPE} = 'IGNORE';
         if (my $conn = $self->{listen_sock}->accept) {
             ++$proc_req_count;
@@ -114,6 +115,18 @@ sub accept_loop {
 
             $self->handle_connection($conn);
         }
+    }
+}
+
+sub _calc_reqs_per_child {
+    my $self = shift;
+
+    my $max = $self->{max_reqs_per_child};
+    if (my $min = $self->{min_reqs_per_child}) {
+        srand((rand() * 2 ** 30) ^ $$ ^ time);
+        return $max - int(($max - $min + 1) * rand);
+    } else {
+        return $max;
     }
 }
 
@@ -231,6 +244,7 @@ Clutch::Worker - distributed job system's worker class
             address            => "$ip:$port",
             max_workers        => $worker_num,
             max_reqs_per_child => $max_reqs_per_child,
+            min_reqs_per_child => $min_reqs_per_child, # optional
         }
     )->new();
 
@@ -302,6 +316,10 @@ if set, worker processes will not be spawned more than once than every given sec
 =item $opts{max_reqs_per_child}
 
 max. number of requests to be handled before a worker process exits (default: 100)
+
+=item $opts{min_reqs_per_child}
+
+if set, randomizes the number of requests handled by a single worker process between the value and that supplied by C<$opts{max_reqs_per_child}> (default: none)
 
 =cut
 
