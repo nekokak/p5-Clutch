@@ -33,6 +33,12 @@ test_tcp(
         }
 
         {
+            $res = $client->request('foo', 'args with space');
+            note $res;
+            ok not $res;
+        }
+
+        {
             $res = $client->request('func', 'not_found');
             note $res;
             is $res, 'ERROR: unknow function';

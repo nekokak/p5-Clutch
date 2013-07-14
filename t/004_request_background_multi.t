@@ -20,6 +20,16 @@ test_tcp(
             is_deeply $res, [qw/OK OK/];
         }
 
+        {
+            $res = $client->request_background_multi([
+                +{function => 'function_name', args => 'args1'},
+                +{function => 'function_name', args => 'args2'},
+                +{function => 'function_name', args => 'args3 with space'},
+            ]);
+            note explain $res;
+            is_deeply $res, [qw/OK OK OK/];
+        }
+
         kill 'TERM', $server_pid;
     },
     server => sub {

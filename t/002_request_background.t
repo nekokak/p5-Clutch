@@ -32,6 +32,12 @@ test_tcp(
             is $res, 'ERROR: unknow function';
         }
 
+        {
+            $res = $client->request_background('foo', 'args with space');
+            note $res;
+            is $res, "OK";
+        }
+
         kill 'TERM', $server_pid;
     },
     server => sub {
