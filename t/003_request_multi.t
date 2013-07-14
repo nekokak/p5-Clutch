@@ -30,6 +30,16 @@ test_tcp(
                     is_deeply $res, [+{response => 'args1'},+{response => 'args2'}];
                 }
 
+                {
+                    $res = $client->request_multi([
+                        +{function => 'function_rand', args => 'args1'},
+                        +{function => 'function_rand', args => 'args2'},
+                        +{function => 'function_rand', args => 'args3 with space'},
+                    ]);
+                    note explain $res;
+                    is_deeply $res, [+{response => 'args1'},+{response => 'args2'},+{response => 'args3 with space'}];
+                }
+
                 kill 'TERM', $server_pid, $server_pid2;
             },
             server => sub {
