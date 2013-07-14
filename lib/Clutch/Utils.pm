@@ -67,8 +67,7 @@ sub parse_read_buffer {
     my ($buf, $ret) = @_;
 
     if ( verify_buffer($buf) ) {
-        my $re = qr/^([^$DELIMITER]+)$DELIMITER+([^$DELIMITER]+)$DELIMITER+(.*)$/o;
-        ($ret->{cmd}, $ret->{function}, $ret->{args}) = ($buf =~ $re);
+        ($ret->{cmd}, $ret->{function}, $ret->{args}) = split /$DELIMITER+/o, $buf, 3;
         $ret->{args} ||= '';
         $ret->{args} = json->decode($ret->{args});
         return 1;
